@@ -154,9 +154,6 @@ function createCard(article, isRanking = false) {
   // カテゴリバッジ
   const catBadge = `<span class="card-badge">${escHtml(catText)}</span>`;
 
-  // 時刻アイコン（見た目の演出）
-  const timeIcon = `<span class="card-badge badge-time">🕐</span>`;
-
   a.innerHTML = `
     <div class="card-header">
       ${pickBadge}
@@ -167,7 +164,6 @@ function createCard(article, isRanking = false) {
       ${sourceBadge}
       ${catBadge}
       ${tierBadge}
-      ${timeIcon}
     </div>
     ${article.summary ? `<div class="card-summary">${escHtml(article.summary)}</div>` : ""}
   `;
