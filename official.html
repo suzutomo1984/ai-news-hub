@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>AI Navigator</title>
+  <title>📢 公式リリース | AI Navigator</title>
   <link rel="stylesheet" href="style.css">
 </head>
 <body>
@@ -16,8 +16,8 @@
     </div>
 
     <nav id="tabbar">
-      <button class="tab-btn active" data-tab="latest">最新</button>
-      <a class="tab-btn" href="official.html">📢 公式</a>
+      <a class="tab-btn" href="index.html">最新</a>
+      <button class="tab-btn active" data-tab="official">📢 公式</button>
     </nav>
 
     <div id="search-wrapper">
@@ -38,10 +38,10 @@
   <!-- アプリレイアウト: サイドバー + メイン -->
   <div id="app-layout">
 
-    <!-- 左サイドバー: フィルター -->
+    <!-- 左サイドバー: 会社フィルター + 日付フィルター -->
     <aside id="sidebar">
       <section class="sidebar-section">
-        <ul id="category-filter"></ul>
+        <ul id="company-filter"></ul>
       </section>
       <div class="sidebar-divider"></div>
       <section class="sidebar-section">
@@ -65,7 +65,7 @@
 
   </div>
 
-  <script src="app.js"></script>
+  <script src="official.js"></script>
   <!-- Cloudflare Web Analytics --><script defer src='https://static.cloudflareinsights.com/beacon.min.js' data-cf-beacon='{"token": "899bb0ef97f74baa90f5584bb37ff9c4"}'></script><!-- End Cloudflare Web Analytics -->
 </body>
 </html>
