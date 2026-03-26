@@ -9,6 +9,8 @@ import os
 import re
 import sys
 import urllib.request
+import urllib.parse
+import xml.etree.ElementTree as ET
 from datetime import datetime, timedelta, timezone
 from pathlib import Path
 
@@ -317,6 +319,7 @@ def main():
 
     # 既存のthumbnailキャッシュを読み込む（article id → thumbnail URL）
     existing_thumbnails = {}
+    existing_data = {}
     if OUTPUT_FILE.exists():
         try:
             existing_data = json.loads(OUTPUT_FILE.read_text(encoding="utf-8"))
@@ -411,14 +414,56 @@ def main():
     date_from = min(all_dates) if all_dates else ""
     date_to = max(all_dates) if all_dates else ""
 
+    # GitHub Trending RSS から今日分を取得（毎日25件）
+    today_str = datetime.now(JST).strftime("%Y-%m-%d")
+    today_trending = fetch_github_trending(limit=25)
+
+    # 既存trending（過去分）を引き継ぎ、今日分だけ差し替え
+    past_trending = [r for r in existing_data.get("trending", []) if r.get("date") != today_str]
+
+    # 過去の登場回数をURLごとに集計
+    url_days: dict[str, int] = {}
+    for r in past_trending:
+        url_days[r["url"]] = url_days.get(r["url"], 0) + 1
+
+    # 今日分に連続日数を付与し、過去分から重複URLを除外（最新=今日分を優先）
+    past_urls_in_today = set()
+    for r in today_trending:
+        days = url_days.get(r["url"], 0) + 1  # 今日含む合計日数
+        r["trendingDays"] = days
+        if days >= 2:
+            past_urls_in_today.add(r["url"])
+
+    # 過去分から今日も登場したURLを除去（今日分に統合）
+    past_trending_deduped = [r for r in past_trending if r["url"] not in past_urls_in_today]
+
+    all_trending = today_trending + past_trending_deduped
+
+    # GitHub APIキャッシュ（full_name→repo）を作成してレート制限対策
+    existing_trending_cache = {}
+    for r in past_trending:
+        m = re.match(r"https://github\.com/([^/]+/[^/?#]+)", r.get("url", ""))
+        if m and r.get("stars") is not None:
+            existing_trending_cache[m.group(1).rstrip("/")] = r
+
+    # GitHub APIで今日分の詳細情報を補完（stars・language・description）
+    enrich_trending_with_github_api(today_trending, existing_trending_cache)
+
+    # Gemini APIで今日分の英語descriptionを日本語要約に翻訳
+    translate_trending_descriptions(today_trending)
+
+    print(f"📊 Trending合計: {len(all_trending)}件 (今日{len(today_trending)}件 + 過去{len(past_trending)}件)")
+
     output = {
         "generatedAt": datetime.now(JST).isoformat(),
         "totalArticles": len(all_articles),
         "officialCount": sum(1 for a in all_articles if a.get("isOfficial")),
+        "trendingCount": len(all_trending),
         "dateRange": {"from": date_from, "to": date_to},
         "dates": sorted(dates_meta, key=lambda x: x["date"], reverse=True),
         "categories": categories,
         "articles": all_articles,
+        "trending": all_trending,
     }
 
     # サムネイル付与（既存キャッシュ引き継ぎ + 新規のみOGP取得）
@@ -448,6 +493,227 @@ def main():
 
     print(f"✅ articles.json 生成完了: {len(all_articles)}記事 / {len(dates_meta)}日分")
     print(f"📋 監査レポート: {AUDIT_FILE}")
+
+
+def parse_trending(filepath: Path, date_str: str) -> list[dict]:
+    """テックニュースMDのGitHub TrendingセクションからリポジトリリストをパースしてJSON化する"""
+    content = filepath.read_text(encoding="utf-8")
+    lines = content.split("\n")
+    repos = []
+    in_trending = False
+    repo_num = 0
+
+    i = 0
+    while i < len(lines):
+        stripped = lines[i].strip()
+
+        # Trendingセクション開始
+        if re.match(r"^##\s+.*Trending", stripped):
+            in_trending = True
+            i += 1
+            continue
+
+        # 別セクション開始でTrending終了
+        if in_trending and re.match(r"^##\s+", stripped) and "Trending" not in stripped:
+            break
+
+        # リポジトリ行: - [owner/repo](url)
+        if in_trending:
+            repo_match = re.match(r"^-\s+\[([^\]]+)\]\((https://github\.com/[^)]+)\)", stripped)
+            if repo_match:
+                repo_name = repo_match.group(1)
+                repo_url = repo_match.group(2)
+                description = ""
+                # 次行が説明文
+                if i + 1 < len(lines):
+                    next_line = lines[i + 1].strip()
+                    if next_line and not next_line.startswith("-") and not next_line.startswith("#"):
+                        description = next_line
+                        i += 1
+                repo_num += 1
+                repos.append({
+                    "id": f"{date_str}_trending_{repo_num}",
+                    "date": date_str,
+                    "title": repo_name,
+                    "url": repo_url,
+                    "source": "GitHub Trending",
+                    "category": "trending",
+                    "summary": description,
+                    "isTrending": True,
+                    "isPick": False,
+                    "pickPriority": None,
+                    "isOfficial": False,
+                    "rankingTier": 3,
+                    "rankingScore": 0,
+                })
+        i += 1
+
+    return repos
+
+
+def fetch_github_trending(limit: int = 25) -> list[dict]:
+    """GitHub Trending RSS (daily + weekly/all) からリポジトリ一覧を取得する（重複除去）"""
+    feed_urls = [
+        "https://mshibanami.github.io/GitHubTrendingRSS/daily/all.xml",
+        "https://mshibanami.github.io/GitHubTrendingRSS/weekly/all.xml",
+    ]
+    today = datetime.now(JST).strftime("%Y-%m-%d")
+    repos = []
+    seen_names = set()
+
+    def parse_feed(feed_url: str) -> list[tuple[str, str]]:
+        """フィードからリポジトリの (full_name, url) リストを返す"""
+        req = urllib.request.Request(feed_url, headers={"User-Agent": "ai-navigator/1.0"})
+        with urllib.request.urlopen(req, timeout=15) as res:
+            raw = res.read()
+        root = ET.fromstring(raw)
+        ns = {"atom": "http://www.w3.org/2005/Atom"}
+        entries = root.findall("atom:entry", ns) or root.findall(".//item")
+        result = []
+        for entry in entries:
+            title_el = entry.find("atom:title", ns) or entry.find("title")
+            link_el  = entry.find("atom:link",  ns) or entry.find("link")
+            title = title_el.text.strip() if title_el is not None and title_el.text else ""
+            if link_el is not None:
+                url = link_el.get("href") or (link_el.text or "").strip()
+            else:
+                url = ""
+            if not url.startswith("https://github.com/"):
+                continue
+            m = re.match(r"https://github\.com/([^/]+/[^/?#]+)", url)
+            if not m:
+                continue
+            full_name = m.group(1).rstrip("/")
+            result.append((full_name, f"https://github.com/{full_name}"))
+        return result
+
+    for feed_url in feed_urls:
+        try:
+            items = parse_feed(feed_url)
+            added = 0
+            for full_name, url in items:
+                if full_name in seen_names:
+                    continue
+                seen_names.add(full_name)
+                idx = len(repos) + 1
+                repos.append({
+                    "id": f"{today}_trending_{idx}",
+                    "date": today,
+                    "title": full_name,
+                    "url": url,
+                    "source": "GitHub Trending",
+                    "category": "trending",
+                    "summary": "",
+                    "isTrending": True,
+                    "isPick": False,
+                    "pickPriority": None,
+                    "isOfficial": False,
+                    "rankingTier": 3,
+                    "rankingScore": 0,
+                })
+                added += 1
+                if len(repos) >= limit:
+                    break
+            print(f"📡 RSS取得: +{added}件 ({feed_url.split('/')[-2]})")
+        except Exception as e:
+            print(f"⚠️  RSS取得失敗 ({feed_url.split('/')[-2]}): {e}")
+
+        if len(repos) >= limit:
+            break
+
+    print(f"📡 GitHub Trending 合計: {len(repos)}件")
+    return repos
+
+
+def enrich_trending_with_github_api(repos: list[dict], existing_cache: dict | None = None) -> None:
+    """GitHub APIでリポジトリ詳細（stars・language・description）を補完する"""
+    token = os.environ.get("GITHUB_TOKEN", "")
+    headers = {"User-Agent": "ai-navigator/1.0"}
+    if token:
+        headers["Authorization"] = f"Bearer {token}"
+
+    enriched = 0
+    cached = 0
+    for repo in repos:
+        m = re.match(r"https://github\.com/([^/]+/[^/?#]+)", repo.get("url", ""))
+        if not m:
+            continue
+        full_name = m.group(1).rstrip("/")
+
+        # 既存キャッシュがあれば再利用（ローカルのレート制限対策）
+        if existing_cache and full_name in existing_cache:
+            cached_repo = existing_cache[full_name]
+            repo["stars"] = cached_repo.get("stars")
+            repo["forks"] = cached_repo.get("forks")
+            repo["language"] = cached_repo.get("language", "")
+            repo["githubDescription"] = cached_repo.get("githubDescription", "")
+            cached += 1
+            continue
+
+        api_url = f"https://api.github.com/repos/{full_name}"
+        try:
+            req = urllib.request.Request(api_url, headers=headers)
+            with urllib.request.urlopen(req, timeout=8) as res:
+                data = json.loads(res.read())
+            repo["stars"] = data.get("stargazers_count", 0)
+            repo["forks"] = data.get("forks_count", 0)
+            repo["language"] = data.get("language") or ""
+            repo["githubDescription"] = data.get("description") or ""
+            enriched += 1
+        except Exception:
+            pass
+
+    print(f"🐙 GitHub API: 新規{enriched}件 / キャッシュ{cached}件 補完")
+
+
+def translate_trending_descriptions(repos: list[dict]) -> None:
+    """Gemini APIでGitHub Trendingリポジトリの説明文を日本語に一括翻訳する"""
+    api_key = os.environ.get("GEMINI_API_KEY", "")
+    if not api_key:
+        print("⚠️  GEMINI_API_KEY未設定 - 翻訳スキップ")
+        return
+
+    # 翻訳対象（githubDescriptionあり・summaryなし）
+    targets = [
+        r for r in repos
+        if r.get("githubDescription") and not r.get("summary")
+    ]
+    if not targets:
+        print("🌐 翻訳対象なし（全件キャッシュ済み）")
+        return
+
+    # 一括翻訳プロンプト
+    lines = "\n".join(
+        f"{i+1}. [{r['title']}] {r['githubDescription']}"
+        for i, r in enumerate(targets)
+    )
+    prompt = f"""以下はGitHubリポジトリの英語説明文です。
+各説明文を**日本語で1〜2文（40〜80文字程度）**に翻訳・要約してください。
+技術用語（AI、LLM、Python等）はそのままでOK。
+出力は番号付きリスト形式で、説明文のみ（タイトルは不要）。
+
+{lines}"""
+
+    try:
+        url = f"https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:generateContent?key={api_key}"
+        body = json.dumps({"contents": [{"parts": [{"text": prompt}]}]}).encode("utf-8")
+        req = urllib.request.Request(url, data=body, headers={"Content-Type": "application/json"})
+        with urllib.request.urlopen(req, timeout=30) as res:
+            result = json.loads(res.read())
+        text = result["candidates"][0]["content"]["parts"][0]["text"]
+
+        # 番号付きリストをパース: "1. 説明文" → index → summary
+        for line in text.strip().splitlines():
+            m = re.match(r"^(\d+)\.\s+(.+)", line.strip())
+            if m:
+                idx = int(m.group(1)) - 1
+                if 0 <= idx < len(targets):
+                    targets[idx]["summary"] = m.group(2).strip()
+
+        translated = sum(1 for r in targets if r.get("summary"))
+        print(f"🌐 Gemini翻訳: {translated}/{len(targets)}件")
+    except Exception as e:
+        print(f"⚠️  Gemini翻訳失敗: {e}")
 
 
 def get_ogp_image(url: str) -> str | None:
