@@ -300,10 +300,10 @@ body {
   flex: 1;
 }
 
-/* 3カラムグリッド */
+/* 4カラムグリッド */
 .article-cards-grid {
   display: grid;
-  grid-template-columns: repeat(3, 1fr);
+  grid-template-columns: repeat(4, 1fr);
   gap: 12px;
 }
 
@@ -315,12 +315,42 @@ body {
   background: var(--bg-card);
   border: 1px solid var(--border);
   border-radius: var(--radius);
-  padding: 16px;
+  overflow: hidden;
   cursor: pointer;
   transition: background 0.15s, border-color 0.15s, transform 0.1s, box-shadow 0.15s;
   text-decoration: none;
-  display: block;
+  display: flex;
+  flex-direction: column;
   color: inherit;
+}
+
+.card-thumb {
+  width: 100%;
+  height: 170px;
+  flex-shrink: 0;
+  overflow: hidden;
+  background: var(--bg-primary);
+}
+
+.card-thumb img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  object-position: center center;
+  display: block;
+  transition: transform 0.2s;
+}
+
+.article-card:hover .card-thumb img {
+  transform: scale(1.03);
+}
+
+.card-body {
+  padding: 14px;
+  flex: 1;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
 }
 
 .article-card:hover {
@@ -460,8 +490,15 @@ body {
    レスポンシブ
    ============================================= */
 
-/* タブレット: 2カラム */
-@media (max-width: 1100px) {
+/* タブレット: 3カラム */
+@media (max-width: 1300px) {
+  .article-cards-grid {
+    grid-template-columns: repeat(3, 1fr);
+  }
+}
+
+/* 小さめタブレット: 2カラム */
+@media (max-width: 900px) {
   .article-cards-grid {
     grid-template-columns: repeat(2, 1fr);
   }
@@ -583,4 +620,12 @@ body {
   .article-cards-grid { grid-template-columns: 1fr; }
 
   .date-group { padding: 0 12px; }
+
+  .card-thumb {
+    height: 150px;
+  }
+
+  .card-body {
+    padding: 10px 12px;
+  }
 }

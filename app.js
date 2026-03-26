@@ -160,19 +160,26 @@ function createCard(article, isRanking = false) {
   // 公式バッジ
   const officialBadge = article.isOfficial ? `<span class="card-badge official-badge">📢 公式</span>` : "";
 
+  const thumbHtml = article.thumbnail
+    ? `<div class="card-thumb"><img src="${article.thumbnail}" alt="" loading="lazy" onerror="this.parentElement.style.display='none'"></div>`
+    : "";
+
   a.innerHTML = `
-    <div class="card-header">
-      ${pickBadge}
-      <div class="card-title">${escHtml(article.title)}</div>
-      ${rankScore}
+    ${thumbHtml}
+    <div class="card-body">
+      <div class="card-header">
+        ${pickBadge}
+        <div class="card-title">${escHtml(article.title)}</div>
+        ${rankScore}
+      </div>
+      <div class="card-meta">
+        ${sourceBadge}
+        ${catBadge}
+        ${officialBadge}
+        ${tierBadge}
+      </div>
+      ${article.summary ? `<div class="card-summary">${escHtml(article.summary)}</div>` : ""}
     </div>
-    <div class="card-meta">
-      ${sourceBadge}
-      ${catBadge}
-      ${officialBadge}
-      ${tierBadge}
-    </div>
-    ${article.summary ? `<div class="card-summary">${escHtml(article.summary)}</div>` : ""}
   `;
 
   return a;

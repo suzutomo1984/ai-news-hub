@@ -8,6 +8,7 @@ import json
 import os
 import re
 import sys
+import urllib.request
 from datetime import datetime, timedelta, timezone
 from pathlib import Path
 
@@ -314,6 +315,17 @@ def main():
     audit_lines = ["=== AI NEWS HUB 監査レポート ===\n"]
     url_seen = {}  # URL重複検出用
 
+    # 既存のthumbnailキャッシュを読み込む（article id → thumbnail URL）
+    existing_thumbnails = {}
+    if OUTPUT_FILE.exists():
+        try:
+            existing_data = json.loads(OUTPUT_FILE.read_text(encoding="utf-8"))
+            for a in existing_data.get("articles", []):
+                if a.get("thumbnail"):
+                    existing_thumbnails[a["id"]] = a["thumbnail"]
+        except Exception:
+            pass
+
     # テックニュースファイルを日付順で処理
     tech_files = sorted(NEWS_DIR.glob("*_テックニュース.md"))
 
@@ -409,6 +421,20 @@ def main():
         "articles": all_articles,
     }
 
+    # サムネイル付与（既存キャッシュ引き継ぎ + 新規のみOGP取得）
+    thumb_ok = 0
+    thumb_new = 0
+    for a in all_articles:
+        if a["id"] in existing_thumbnails:
+            a["thumbnail"] = existing_thumbnails[a["id"]]
+            thumb_ok += 1
+        elif a.get("url", "").startswith("http"):
+            thumb = get_ogp_image(a["url"])
+            if thumb:
+                a["thumbnail"] = thumb
+                thumb_new += 1
+    print(f"🖼️  サムネイル: 引き継ぎ{thumb_ok}件 / 新規取得{thumb_new}件")
+
     # JSON出力
     OUTPUT_FILE.write_text(
         json.dumps(output, ensure_ascii=False, indent=2),
@@ -422,6 +448,20 @@ def main():
 
     print(f"✅ articles.json 生成完了: {len(all_articles)}記事 / {len(dates_meta)}日分")
     print(f"📋 監査レポート: {AUDIT_FILE}")
+
+
+def get_ogp_image(url: str) -> str | None:
+    """URLからOGP画像URLを取得する"""
+    try:
+        req = urllib.request.Request(url, headers={"User-Agent": "Mozilla/5.0"})
+        with urllib.request.urlopen(req, timeout=8) as res:
+            html = res.read().decode("utf-8", errors="ignore")
+        m = re.search(r'<meta[^>]+property=["\']og:image["\'][^>]+content=["\']([^"\']+)["\']', html)
+        if not m:
+            m = re.search(r'<meta[^>]+content=["\']([^"\']+)["\'][^>]+property=["\']og:image["\']', html)
+        return m.group(1) if m else None
+    except Exception:
+        return None
 
 
 def get_day_of_week(date_str: str) -> str:
