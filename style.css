@@ -458,6 +458,44 @@ body {
   white-space: nowrap;
 }
 
+/* デイリーサマリーウィジェット */
+#daily-summary {
+  background: var(--accent-subtle);
+  border: 1px solid var(--border-accent);
+  border-radius: var(--radius);
+  padding: 14px 18px;
+  margin-bottom: 12px;
+}
+
+.summary-header {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  margin-bottom: 8px;
+}
+
+.summary-date {
+  font-size: 12px;
+  font-weight: 600;
+  color: var(--accent-hover);
+}
+
+.summary-count {
+  font-size: 11px;
+  color: var(--text-secondary);
+  margin-left: auto;
+}
+
+.summary-text {
+  font-size: 13px;
+  color: var(--text-secondary);
+  line-height: 1.7;
+  display: -webkit-box;
+  -webkit-line-clamp: 3;
+  -webkit-box-orient: vertical;
+  overflow: hidden;
+}
+
 .card-summary {
   font-size: 13px;
   color: var(--text-secondary);

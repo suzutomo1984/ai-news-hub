@@ -33,8 +33,30 @@ async function loadData() {
   allDates = data.dates || [];
   allCategories = data.categories || [];
 
+  buildDailySummary(data.dates || []);
   buildSidebarFilters();
   render();
+}
+
+function buildDailySummary(dates) {
+  const el = document.getElementById("daily-summary");
+  if (!el) return;
+
+  // 最新日付のサマリーを取得
+  const latest = dates.find(d => d.dailySummary && d.dailySummary.trim());
+  if (!latest) return;
+
+  const dateLabel = latest.date.slice(5).replace("-", "/");
+  const articleCount = latest.articleCount || 0;
+
+  el.innerHTML = `
+    <div class="summary-header">
+      <span class="summary-date">📅 ${dateLabel} の AI ニュース</span>
+      <span class="summary-count">${articleCount}件</span>
+    </div>
+    <div class="summary-text">${escHtml(latest.dailySummary)}</div>
+  `;
+  el.style.display = "block";
 }
 
 // =============================================
