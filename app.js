@@ -33,31 +33,10 @@ async function loadData() {
   allDates = data.dates || [];
   allCategories = data.categories || [];
 
-  buildDailySummary(data.dates || []);
   buildSidebarFilters();
   render();
 }
 
-function buildDailySummary(dates) {
-  const el = document.getElementById("daily-summary");
-  if (!el) return;
-
-  // 最新日付のサマリーを取得
-  const latest = dates.find(d => d.dailySummary && d.dailySummary.trim());
-  if (!latest) return;
-
-  const dateLabel = latest.date.slice(5).replace("-", "/");
-  const articleCount = latest.articleCount || 0;
-
-  el.innerHTML = `
-    <div class="summary-header">
-      <span class="summary-date">📅 ${dateLabel} の AI ニュース</span>
-      <span class="summary-count">${articleCount}件</span>
-    </div>
-    <div class="summary-text">${escHtml(latest.dailySummary)}</div>
-  `;
-  el.style.display = "block";
-}
 
 // =============================================
 // サイドバーフィルター構築
@@ -313,12 +292,18 @@ function render() {
         `;
         dateGroup.appendChild(header);
 
-        // dailySummary表示
+        // dailySummaryをウィジェットと同じデザインで表示
         const dateInfo = allDates.find(d => d.date === currentDate);
-        if (dateInfo && dateInfo.dailySummary) {
+        if (dateInfo && dateInfo.dailySummary && dateInfo.dailySummary.trim()) {
           const summary = document.createElement("div");
-          summary.className = "daily-summary";
-          summary.innerHTML = `<span class="daily-summary-icon">💡</span><span class="daily-summary-text">${escHtml(dateInfo.dailySummary)}</span>`;
+          summary.className = "date-daily-summary";
+          summary.innerHTML = `
+            <div class="summary-header">
+              <span class="summary-date">📅 ${mm}/${dd} の AI ニュース</span>
+              <span class="summary-count">${dateInfo.articleCount || 0}件</span>
+            </div>
+            <div class="summary-text">${escHtml(dateInfo.dailySummary)}</div>
+          `;
           dateGroup.appendChild(summary);
         }
 
