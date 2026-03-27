@@ -457,8 +457,8 @@ def main():
     # GitHub APIで今日分の詳細情報を補完（stars・language・description）
     enrich_trending_with_github_api(today_trending, existing_trending_cache)
 
-    # Gemini APIで今日分の英語descriptionを日本語要約に翻訳
-    translate_trending_descriptions(today_trending)
+    # Gemini APIで英語descriptionを日本語要約に翻訳（summaryが空の全件対象）
+    translate_trending_descriptions(all_trending)
 
     print(f"📊 Trending合計: {len(all_trending)}件 (今日{len(today_trending)}件 + 過去{len(past_trending)}件)")
 
