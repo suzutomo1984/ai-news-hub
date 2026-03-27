@@ -721,32 +721,26 @@ body {
     gap: 0;
   }
 
-  /* 1段目: ロゴ + フィルターボタン + 検索 */
+  /* 1段目: ロゴ（左）＋ハンバーガー（右） */
   #logo {
     flex: 1;
     height: 48px;
     align-items: center;
   }
 
+  /* 検索窓を非表示 */
   #search-wrapper {
-    height: 48px;
-    display: flex;
-    align-items: center;
+    display: none;
   }
-
-  #search-input {
-    width: 130px;
-    font-size: 13px;
-  }
-
-  #search-input:focus { width: 160px; }
 
   #sidebar-toggle {
     display: flex;
     align-items: center;
+    justify-content: center;
     height: 48px;
     padding: 0 10px;
-    margin: 0 4px;
+    margin: 0;
+    margin-left: auto;
   }
 
   /* 2段目: タブバーを全幅で下段に */
