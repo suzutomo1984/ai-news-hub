@@ -26,17 +26,50 @@ async function loadData() {
 }
 
 function buildSidebarFilters() {
-  const dateList = document.getElementById("date-filter");
-  dateList.innerHTML = `<li class="sidebar-item active" data-date="all">All</li>`;
+  // 日付フィルター（月別アコーディオン）
+  const dateContainer = document.getElementById("date-filter");
+  dateContainer.innerHTML = `<li class="sidebar-item active" data-date="all">All</li>`;
+
+  const monthMap = new Map();
   allDates.forEach(d => {
-    const li = document.createElement("li");
-    li.className = "sidebar-item";
-    li.dataset.date = d;
     const dt = new Date(d);
-    const mm = dt.getMonth() + 1;
-    const dd = dt.getDate();
-    li.textContent = `${mm}/${dd}`;
-    dateList.appendChild(li);
+    const monthKey = `${dt.getFullYear()}-${String(dt.getMonth() + 1).padStart(2, "0")}`;
+    const monthLabel = `${dt.getFullYear()}年${dt.getMonth() + 1}月`;
+    if (!monthMap.has(monthKey)) monthMap.set(monthKey, { label: monthLabel, dates: [] });
+    monthMap.get(monthKey).dates.push(d);
+  });
+
+  const now = new Date();
+  const currentMonthKey = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, "0")}`;
+
+  monthMap.forEach((month, monthKey) => {
+    const isCurrentMonth = monthKey === currentMonthKey;
+
+    const monthHeader = document.createElement("li");
+    monthHeader.className = "date-month-header";
+    monthHeader.innerHTML = `<span>${month.label}</span><span class="date-month-arrow">${isCurrentMonth ? "▼" : "▶"}</span>`;
+
+    const monthDates = document.createElement("ul");
+    monthDates.className = "date-month-list" + (isCurrentMonth ? " open" : "");
+
+    month.dates.forEach(d => {
+      const li = document.createElement("li");
+      li.className = "sidebar-item";
+      li.dataset.date = d;
+      const dt = new Date(d);
+      const mm = dt.getMonth() + 1;
+      const dd = dt.getDate();
+      li.textContent = `${mm}/${dd}`;
+      monthDates.appendChild(li);
+    });
+
+    monthHeader.addEventListener("click", () => {
+      const isOpen = monthDates.classList.toggle("open");
+      monthHeader.querySelector(".date-month-arrow").textContent = isOpen ? "▼" : "▶";
+    });
+
+    dateContainer.appendChild(monthHeader);
+    dateContainer.appendChild(monthDates);
   });
 }
 
