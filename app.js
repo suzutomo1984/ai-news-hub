@@ -252,15 +252,55 @@ function sortArticles(articles) {
 // 記事カード生成
 // =============================================
 
+function openModal(article) {
+  const modal = document.getElementById("article-modal");
+  const categoryLabel = allCategories.find(c => c.id === article.category);
+  const catText = categoryLabel ? categoryLabel.label : article.category;
+
+  // サムネイル
+  const thumbWrap = document.getElementById("modal-thumb-wrap");
+  if (article.thumbnail) {
+    thumbWrap.innerHTML = `<img src="${article.thumbnail}" alt="" onerror="this.parentElement.style.display='none'">`;
+    thumbWrap.style.display = "block";
+  } else {
+    thumbWrap.innerHTML = "";
+    thumbWrap.style.display = "none";
+  }
+
+  // メタ情報
+  const officialBadge = article.isOfficial ? `<span class="card-badge official-badge">📢 公式</span>` : "";
+  document.getElementById("modal-meta").innerHTML = `
+    ${article.source ? `<span class="card-badge">${escHtml(article.source)}</span>` : ""}
+    <span class="card-badge">${escHtml(catText)}</span>
+    ${officialBadge}
+    ${article.date ? `<span class="card-date">${article.date.slice(5).replace("-", "/")}</span>` : ""}
+  `;
+
+  document.getElementById("modal-title").textContent = article.title || "";
+  document.getElementById("modal-summary").textContent = article.summary || "（要約なし）";
+  const readBtn = document.getElementById("modal-read-btn");
+  readBtn.href = article.url || "#";
+
+  modal.setAttribute("aria-hidden", "false");
+  modal.classList.add("open");
+  document.body.style.overflow = "hidden";
+  document.documentElement.style.overflow = "hidden";
+}
+
+function closeModal() {
+  const modal = document.getElementById("article-modal");
+  modal.classList.remove("open");
+  modal.setAttribute("aria-hidden", "true");
+  document.body.style.overflow = "";
+  document.documentElement.style.overflow = "";
+}
+
 function createCard(article, isRanking = false) {
-  const a = document.createElement("a");
-  a.href = article.url || "#";
-  a.target = "_blank";
-  a.rel = "noopener noreferrer";
-  a.className = "article-card";
+  const card = document.createElement("div");
+  card.className = "article-card";
 
   if (article.isPick) {
-    a.classList.add(article.pickPriority === "must-read" ? "pick-must" : "pick-check");
+    card.classList.add(article.pickPriority === "must-read" ? "pick-must" : "pick-check");
   }
 
   const pickBadge = article.isPick
@@ -280,18 +320,12 @@ function createCard(article, isRanking = false) {
   const categoryLabel = allCategories.find(c => c.id === article.category);
   const catText = categoryLabel ? `${categoryLabel.label}` : article.category;
 
-  // ソースバッジ（ドメイン短縮表示）
   const sourceBadge = article.source
     ? `<span class="card-badge">${escHtml(article.source)}</span>`
     : "";
 
-  // カテゴリバッジ
   const catBadge = `<span class="card-badge">${escHtml(catText)}</span>`;
-
-  // 公式バッジ
   const officialBadge = article.isOfficial ? `<span class="card-badge official-badge">📢 公式</span>` : "";
-
-  // 日付バッジ（MM/DD形式）
   const dateBadge = article.date
     ? `<span class="card-date">${article.date.slice(5).replace("-", "/")}</span>`
     : "";
@@ -300,7 +334,7 @@ function createCard(article, isRanking = false) {
     ? `<div class="card-thumb"><img src="${article.thumbnail}" alt="" loading="lazy" onerror="this.parentElement.style.display='none'"></div>`
     : "";
 
-  a.innerHTML = `
+  card.innerHTML = `
     ${thumbHtml}
     <div class="card-body">
       <div class="card-header">
@@ -319,7 +353,9 @@ function createCard(article, isRanking = false) {
     </div>
   `;
 
-  return a;
+  card.addEventListener("click", () => openModal(article));
+
+  return card;
 }
 
 function escHtml(str) {
@@ -441,6 +477,15 @@ function render() {
 // =============================================
 
 function setupEvents() {
+  // モーダル閉じる
+  document.getElementById("modal-close-btn").addEventListener("click", closeModal);
+  document.getElementById("article-modal").addEventListener("click", e => {
+    if (e.target === e.currentTarget) closeModal();
+  });
+  document.addEventListener("keydown", e => {
+    if (e.key === "Escape") closeModal();
+  });
+
   // タブ切替
   document.querySelectorAll(".tab-btn").forEach(btn => {
     btn.addEventListener("click", () => {

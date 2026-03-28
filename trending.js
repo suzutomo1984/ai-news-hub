@@ -198,12 +198,47 @@ function filterRepos() {
   }
 }
 
+function openModal(repo) {
+  const modal = document.getElementById("article-modal");
+  const parts = repo.title.split("/");
+  const owner = parts[0] || "";
+  const repoName = parts[1] || repo.title;
+
+  const starsText = repo.stars != null ? `⭐ ${formatNum(repo.stars)}` : "";
+  const forksText = repo.forks != null ? `🍴 ${formatNum(repo.forks)}` : "";
+  const hotText = repo.trendingDays >= 2 ? `🔥 ${repo.trendingDays}日連続` : "";
+
+  document.getElementById("modal-meta").innerHTML = `
+    ${repo.language ? `<span class="card-badge">${escHtml(repo.language)}</span>` : ""}
+    ${hotText ? `<span class="trending-hot">${hotText}</span>` : ""}
+    ${starsText ? `<span class="trending-stat">${starsText}</span>` : ""}
+    ${forksText ? `<span class="trending-stat">${forksText}</span>` : ""}
+    ${repo.date ? `<span class="card-date">${repo.date.slice(5).replace("-", "/")}</span>` : ""}
+  `;
+
+  document.getElementById("modal-title").innerHTML =
+    `<span style="opacity:0.6;font-weight:400">${escHtml(owner)} / </span>${escHtml(repoName)}`;
+  document.getElementById("modal-summary").textContent =
+    repo.summary || repo.githubDescription || "（説明なし）";
+  document.getElementById("modal-read-btn").href = repo.url;
+
+  modal.setAttribute("aria-hidden", "false");
+  modal.classList.add("open");
+  document.body.style.overflow = "hidden";
+  document.documentElement.style.overflow = "hidden";
+}
+
+function closeModal() {
+  const modal = document.getElementById("article-modal");
+  modal.classList.remove("open");
+  modal.setAttribute("aria-hidden", "true");
+  document.body.style.overflow = "";
+  document.documentElement.style.overflow = "";
+}
+
 function createCard(repo) {
-  const a = document.createElement("a");
-  a.href = repo.url;
-  a.target = "_blank";
-  a.rel = "noopener noreferrer";
-  a.className = "article-card trending-card";
+  const card = document.createElement("div");
+  card.className = "article-card trending-card";
 
   const parts = repo.title.split("/");
   const owner = parts[0] || "";
@@ -219,7 +254,7 @@ function createCard(repo) {
   const hotHtml = (repo.trendingDays >= 2)
     ? `<span class="trending-hot">🔥 ${repo.trendingDays}日連続</span>` : "";
 
-  a.innerHTML = `
+  card.innerHTML = `
     <div class="card-body">
       <div class="trending-repo-name">
         <span class="trending-owner">${escHtml(owner)}</span>
@@ -233,7 +268,9 @@ function createCard(repo) {
     </div>
   `;
 
-  return a;
+  card.addEventListener("click", () => openModal(repo));
+
+  return card;
 }
 
 function formatNum(n) {
@@ -315,6 +352,14 @@ function render() {
 }
 
 function setupEvents() {
+  document.getElementById("modal-close-btn").addEventListener("click", closeModal);
+  document.getElementById("article-modal").addEventListener("click", e => {
+    if (e.target === e.currentTarget) closeModal();
+  });
+  document.addEventListener("keydown", e => {
+    if (e.key === "Escape") closeModal();
+  });
+
   document.getElementById("sort-filter")?.addEventListener("click", e => {
     const item = e.target.closest(".sidebar-item");
     if (!item) return;

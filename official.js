@@ -236,12 +236,48 @@ function sortArticles(articles) {
   });
 }
 
+function openModal(article) {
+  const modal = document.getElementById("article-modal");
+  const categoryLabel = allCategories.find(c => c.id === article.category);
+  const catText = categoryLabel ? categoryLabel.label : article.category;
+
+  const thumbWrap = document.getElementById("modal-thumb-wrap");
+  if (article.thumbnail) {
+    thumbWrap.innerHTML = `<img src="${article.thumbnail}" alt="" onerror="this.parentElement.style.display='none'">`;
+    thumbWrap.style.display = "block";
+  } else {
+    thumbWrap.innerHTML = "";
+    thumbWrap.style.display = "none";
+  }
+
+  document.getElementById("modal-meta").innerHTML = `
+    ${article.source ? `<span class="card-badge">${escHtml(article.source)}</span>` : ""}
+    <span class="card-badge">${escHtml(catText)}</span>
+    <span class="card-badge official-badge">📢 公式</span>
+    ${article.date ? `<span class="card-date">${article.date.slice(5).replace("-", "/")}</span>` : ""}
+  `;
+
+  document.getElementById("modal-title").textContent = article.title || "";
+  document.getElementById("modal-summary").textContent = article.summary || "（要約なし）";
+  document.getElementById("modal-read-btn").href = article.url || "#";
+
+  modal.setAttribute("aria-hidden", "false");
+  modal.classList.add("open");
+  document.body.style.overflow = "hidden";
+  document.documentElement.style.overflow = "hidden";
+}
+
+function closeModal() {
+  const modal = document.getElementById("article-modal");
+  modal.classList.remove("open");
+  modal.setAttribute("aria-hidden", "true");
+  document.body.style.overflow = "";
+  document.documentElement.style.overflow = "";
+}
+
 function createCard(article) {
-  const a = document.createElement("a");
-  a.href = article.url || "#";
-  a.target = "_blank";
-  a.rel = "noopener noreferrer";
-  a.className = "article-card";
+  const card = document.createElement("div");
+  card.className = "article-card";
 
   const categoryLabel = allCategories.find(c => c.id === article.category);
   const catText = categoryLabel ? `${categoryLabel.label}` : article.category;
@@ -260,7 +296,7 @@ function createCard(article) {
     ? `<div class="card-thumb"><img src="${article.thumbnail}" alt="" loading="lazy" onerror="this.parentElement.style.display='none'"></div>`
     : "";
 
-  a.innerHTML = `
+  card.innerHTML = `
     ${thumbHtml}
     <div class="card-body">
       <div class="card-header">
@@ -276,7 +312,9 @@ function createCard(article) {
     </div>
   `;
 
-  return a;
+  card.addEventListener("click", () => openModal(article));
+
+  return card;
 }
 
 function escHtml(str) {
@@ -360,6 +398,14 @@ function render() {
 }
 
 function setupEvents() {
+  document.getElementById("modal-close-btn").addEventListener("click", closeModal);
+  document.getElementById("article-modal").addEventListener("click", e => {
+    if (e.target === e.currentTarget) closeModal();
+  });
+  document.addEventListener("keydown", e => {
+    if (e.key === "Escape") closeModal();
+  });
+
   document.getElementById("company-filter").addEventListener("click", e => {
     const item = e.target.closest(".sidebar-item");
     if (!item) return;
