@@ -62,11 +62,36 @@ function buildSidebarFilters() {
     companyList.appendChild(li);
   });
 
-  // 日付フィルター（月別アコーディオン）
-  const dateContainer = document.getElementById("date-filter");
-  dateContainer.innerHTML = `<li class="sidebar-item active" data-date="all">All</li>`;
+  buildDateFilter();
+}
 
-  const validDates = allDates.filter(d => d.status === "ok" && d.articleCount > 0);
+// 現在の会社フィルター状態に合わせて日付フィルターを再構築
+function buildDateFilter() {
+  // 現在の会社フィルターで存在する公式記事の日付セットを取得
+  const activeDates = new Set(
+    allArticles
+      .filter(a => {
+        if (!a.isOfficial) return false;
+        if (state.company !== "all") {
+          const sources = SOURCE_GROUPS[state.company] || [];
+          if (!sources.includes(a.source)) return false;
+        }
+        return true;
+      })
+      .map(a => a.date)
+  );
+
+  // 全日付リストからactiveDatesに含まれる日付のみ抽出（順序維持）
+  const validDates = allDates.filter(d => d.status === "ok" && activeDates.has(d.date));
+
+  // 選択中の日付が存在しなくなったらallにリセット
+  if (state.date !== "all" && !activeDates.has(state.date)) {
+    state.date = "all";
+  }
+
+  // 日付フィルター（月別アコーディオン）再構築
+  const dateContainer = document.getElementById("date-filter");
+  dateContainer.innerHTML = `<li class="sidebar-item${state.date === "all" ? " active" : ""}" data-date="all">All</li>`;
 
   const monthMap = new Map();
   validDates.forEach(d => {
@@ -92,7 +117,7 @@ function buildSidebarFilters() {
 
     month.dates.forEach(d => {
       const li = document.createElement("li");
-      li.className = "sidebar-item";
+      li.className = "sidebar-item" + (state.date === d.date ? " active" : "");
       li.dataset.date = d.date;
       const dt = new Date(d.date);
       const mm = dt.getMonth() + 1;
@@ -109,6 +134,9 @@ function buildSidebarFilters() {
     dateContainer.appendChild(monthHeader);
     dateContainer.appendChild(monthDates);
   });
+
+  // モバイル日付ドロップダウンも同期
+  rebuildMobileDateList(validDates);
 }
 
 // =============================================
@@ -164,50 +192,74 @@ function buildMobileCategoryBar() {
     btn.classList.add("active");
     state.company = btn.dataset.company;
     state.page = 1;
+    buildDateFilter();
     render();
   });
 }
 
 function buildMobileDateDropdown() {
-  const list = document.getElementById("mob-date-list");
   const btn = document.getElementById("mob-date-btn");
   const dropdown = document.getElementById("mob-date-dropdown");
+  const list = document.getElementById("mob-date-list");
   if (!list || !btn || !dropdown) return;
 
-  const allItem = document.createElement("button");
-  allItem.className = "mob-date-item active";
-  allItem.dataset.date = "all";
-  allItem.textContent = "すべて";
-  list.appendChild(allItem);
-
-  const validDates = allDates.filter(d => d.status === "ok" && d.articleCount > 0);
-  validDates.forEach(d => {
-    const item = document.createElement("button");
-    item.className = "mob-date-item";
-    item.dataset.date = d.date;
-    const dt = new Date(d.date);
-    item.textContent = `${dt.getMonth() + 1}/${dt.getDate()}`;
-    list.appendChild(item);
-  });
-
+  // 開閉イベント（初回のみ登録）
   btn.addEventListener("click", () => {
     dropdown.classList.toggle("open");
     btn.classList.toggle("active");
   });
 
+  // 日付アイテム選択
   list.addEventListener("click", e => {
     const item = e.target.closest(".mob-date-item");
     if (!item) return;
-    list.querySelectorAll(".mob-date-item").forEach(i => i.classList.remove("active"));
-    item.classList.add("active");
     state.date = item.dataset.date;
     state.page = 1;
     const label = document.getElementById("mob-date-label");
     if (label) label.textContent = item.dataset.date === "all" ? "日付" : item.textContent;
     dropdown.classList.remove("open");
     btn.classList.remove("active");
+    buildDateFilter();
     render();
   });
+
+  // 初期リスト構築
+  const validDates = allDates.filter(d => d.status === "ok" && d.articleCount > 0);
+  rebuildMobileDateList(validDates);
+}
+
+// モバイル日付リストをvalidDatesで再構築（buildDateFilterから呼ばれる）
+function rebuildMobileDateList(validDates) {
+  const list = document.getElementById("mob-date-list");
+  if (!list) return;
+
+  list.innerHTML = "";
+
+  const allItem = document.createElement("button");
+  allItem.className = "mob-date-item" + (state.date === "all" ? " active" : "");
+  allItem.dataset.date = "all";
+  allItem.textContent = "すべて";
+  list.appendChild(allItem);
+
+  validDates.forEach(d => {
+    const item = document.createElement("button");
+    item.className = "mob-date-item" + (state.date === d.date ? " active" : "");
+    item.dataset.date = d.date;
+    const dt = new Date(d.date);
+    item.textContent = `${dt.getMonth() + 1}/${dt.getDate()}`;
+    list.appendChild(item);
+  });
+
+  // ラベル更新
+  const label = document.getElementById("mob-date-label");
+  if (label) {
+    if (state.date === "all") {
+      label.textContent = "日付";
+    } else {
+      const dt = new Date(state.date);
+      label.textContent = `${dt.getMonth() + 1}/${dt.getDate()}`;
+    }
+  }
 }
 
 function filterArticles() {
@@ -413,6 +465,7 @@ function setupEvents() {
     item.classList.add("active");
     state.company = item.dataset.company;
     state.page = 1;
+    buildDateFilter();
     render();
   });
 
@@ -542,6 +595,7 @@ function setupSwipe() {
       btns[nextIdx].scrollIntoView({ behavior: "smooth", block: "nearest", inline: "center" });
       state.company = btns[nextIdx].dataset.company;
       state.page = 1;
+      buildDateFilter();
       render();
 
       container.style.transition = "none";
