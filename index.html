@@ -49,6 +49,34 @@
   </header>
 
   <!-- アプリレイアウト: サイドバー + メイン -->
+  <!-- モバイル: カテゴリタブバー（上部） -->
+  <div id="mobile-category-bar">
+    <div id="mobile-cat-scroll">
+      <!-- app.js が動的に生成 -->
+    </div>
+    <button id="mob-date-btn">📅 <span id="mob-date-label">日付</span></button>
+  </div>
+  <!-- 日付ドロップダウン -->
+  <div id="mob-date-dropdown">
+    <div id="mob-date-list"></div>
+  </div>
+
+  <!-- ボトムナビ -->
+  <nav id="bottom-nav">
+    <a class="bnav-item active" href="index.html">
+      <span class="bnav-icon">🏠</span>
+      <span class="bnav-label">ホーム</span>
+    </a>
+    <a class="bnav-item" href="official.html">
+      <span class="bnav-icon">📢</span>
+      <span class="bnav-label">公式</span>
+    </a>
+    <a class="bnav-item" href="trending.html">
+      <span class="bnav-icon">🌟</span>
+      <span class="bnav-label">Trending</span>
+    </a>
+  </nav>
+
   <div id="app-layout">
 
     <!-- 左サイドバー: フィルター -->

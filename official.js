@@ -42,6 +42,8 @@ async function loadData() {
   allCategories = data.categories || [];
 
   buildSidebarFilters();
+  buildMobileCategoryBar();
+  buildMobileDateDropdown();
   render();
 }
 
@@ -106,6 +108,105 @@ function buildSidebarFilters() {
 
     dateContainer.appendChild(monthHeader);
     dateContainer.appendChild(monthDates);
+  });
+}
+
+// =============================================
+// モバイルカテゴリタブバー（会社フィルター）
+// =============================================
+
+const COMPANY_COLORS = {
+  "all":        "#3b82f6",
+  "OpenAI":     "#10a37f",
+  "Google":     "#ea4335",
+  "Anthropic":  "#d97706",
+  "Microsoft":  "#0078d4",
+  "MCP":        "#8b5cf6",
+  "LangChain":  "#16a34a",
+  "LlamaIndex": "#6366f1",
+  "Ollama":     "#64748b",
+  "CrewAI":     "#ec4899",
+  "vLLM":       "#f59e0b",
+  "LiteLLM":    "#06b6d4",
+  "Dify":       "#7c3aed",
+  "Flowise":    "#059669",
+};
+
+function buildMobileCategoryBar() {
+  const scroll = document.getElementById("mobile-cat-scroll");
+  if (!scroll) return;
+  scroll.innerHTML = "";
+
+  const officialArticles = allArticles.filter(a => a.isOfficial);
+
+  const allBtn = document.createElement("button");
+  allBtn.className = "mob-cat-btn active";
+  allBtn.dataset.company = "all";
+  allBtn.textContent = "ALL";
+  allBtn.style.background = COMPANY_COLORS["all"];
+  scroll.appendChild(allBtn);
+
+  Object.entries(SOURCE_GROUPS).forEach(([company, sources]) => {
+    const count = officialArticles.filter(a => sources.includes(a.source)).length;
+    if (count === 0) return;
+    const btn = document.createElement("button");
+    btn.className = "mob-cat-btn";
+    btn.dataset.company = company;
+    btn.textContent = company;
+    btn.style.background = COMPANY_COLORS[company] || "#64748b";
+    scroll.appendChild(btn);
+  });
+
+  scroll.addEventListener("click", e => {
+    const btn = e.target.closest(".mob-cat-btn");
+    if (!btn) return;
+    scroll.querySelectorAll(".mob-cat-btn").forEach(b => b.classList.remove("active"));
+    btn.classList.add("active");
+    state.company = btn.dataset.company;
+    state.page = 1;
+    render();
+  });
+}
+
+function buildMobileDateDropdown() {
+  const list = document.getElementById("mob-date-list");
+  const btn = document.getElementById("mob-date-btn");
+  const dropdown = document.getElementById("mob-date-dropdown");
+  if (!list || !btn || !dropdown) return;
+
+  const allItem = document.createElement("button");
+  allItem.className = "mob-date-item active";
+  allItem.dataset.date = "all";
+  allItem.textContent = "すべて";
+  list.appendChild(allItem);
+
+  const validDates = allDates.filter(d => d.status === "ok" && d.articleCount > 0);
+  validDates.forEach(d => {
+    const item = document.createElement("button");
+    item.className = "mob-date-item";
+    item.dataset.date = d.date;
+    const dt = new Date(d.date);
+    item.textContent = `${dt.getMonth() + 1}/${dt.getDate()}`;
+    list.appendChild(item);
+  });
+
+  btn.addEventListener("click", () => {
+    dropdown.classList.toggle("open");
+    btn.classList.toggle("active");
+  });
+
+  list.addEventListener("click", e => {
+    const item = e.target.closest(".mob-date-item");
+    if (!item) return;
+    list.querySelectorAll(".mob-date-item").forEach(i => i.classList.remove("active"));
+    item.classList.add("active");
+    state.date = item.dataset.date;
+    state.page = 1;
+    const label = document.getElementById("mob-date-label");
+    if (label) label.textContent = item.dataset.date === "all" ? "日付" : item.textContent;
+    dropdown.classList.remove("open");
+    btn.classList.remove("active");
+    render();
   });
 }
 

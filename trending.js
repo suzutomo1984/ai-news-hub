@@ -23,6 +23,8 @@ async function loadData() {
   allDates = [...new Set(allTrending.map(r => r.date))].sort((a, b) => b.localeCompare(a));
 
   buildSidebarFilters();
+  buildMobileCategoryBar();
+  buildMobileDateDropdown();
   render();
 }
 
@@ -90,6 +92,90 @@ function buildSidebarFilters() {
 
     dateContainer.appendChild(monthHeader);
     dateContainer.appendChild(monthDates);
+  });
+}
+
+// =============================================
+// モバイルカテゴリタブバー（ソートフィルター）
+// =============================================
+
+const SORT_COLORS = {
+  "stars_desc": "#f59e0b",
+  "stars_asc":  "#fbbf24",
+  "forks_desc": "#06b6d4",
+  "forks_asc":  "#22d3ee",
+};
+
+function buildMobileCategoryBar() {
+  const scroll = document.getElementById("mobile-cat-scroll");
+  if (!scroll) return;
+  scroll.innerHTML = "";
+
+  const sorts = [
+    { key: "stars_desc", label: "⭐ Stars 多い順" },
+    { key: "stars_asc",  label: "⭐ Stars 少ない順" },
+    { key: "forks_desc", label: "🍴 Forks 多い順" },
+    { key: "forks_asc",  label: "🍴 Forks 少ない順" },
+  ];
+
+  sorts.forEach(s => {
+    const btn = document.createElement("button");
+    btn.className = "mob-cat-btn" + (s.key === state.sort ? " active" : "");
+    btn.dataset.sort = s.key;
+    btn.textContent = s.label;
+    btn.style.background = SORT_COLORS[s.key] || "#64748b";
+    scroll.appendChild(btn);
+  });
+
+  scroll.addEventListener("click", e => {
+    const btn = e.target.closest(".mob-cat-btn");
+    if (!btn) return;
+    scroll.querySelectorAll(".mob-cat-btn").forEach(b => b.classList.remove("active"));
+    btn.classList.add("active");
+    state.sort = btn.dataset.sort;
+    state.page = 1;
+    render();
+  });
+}
+
+function buildMobileDateDropdown() {
+  const list = document.getElementById("mob-date-list");
+  const btn = document.getElementById("mob-date-btn");
+  const dropdown = document.getElementById("mob-date-dropdown");
+  if (!list || !btn || !dropdown) return;
+
+  const allItem = document.createElement("button");
+  allItem.className = "mob-date-item active";
+  allItem.dataset.date = "all";
+  allItem.textContent = "すべて";
+  list.appendChild(allItem);
+
+  allDates.forEach(d => {
+    const item = document.createElement("button");
+    item.className = "mob-date-item";
+    item.dataset.date = d;
+    const dt = new Date(d);
+    item.textContent = `${dt.getMonth() + 1}/${dt.getDate()}`;
+    list.appendChild(item);
+  });
+
+  btn.addEventListener("click", () => {
+    dropdown.classList.toggle("open");
+    btn.classList.toggle("active");
+  });
+
+  list.addEventListener("click", e => {
+    const item = e.target.closest(".mob-date-item");
+    if (!item) return;
+    list.querySelectorAll(".mob-date-item").forEach(i => i.classList.remove("active"));
+    item.classList.add("active");
+    state.date = item.dataset.date;
+    state.page = 1;
+    const label = document.getElementById("mob-date-label");
+    if (label) label.textContent = item.dataset.date === "all" ? "日付" : item.textContent;
+    dropdown.classList.remove("open");
+    btn.classList.remove("active");
+    render();
   });
 }
 

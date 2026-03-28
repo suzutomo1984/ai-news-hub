@@ -48,6 +48,33 @@
     <button id="sidebar-toggle" aria-label="フィルターを開く">☰</button>
   </header>
 
+  <!-- モバイル: カテゴリタブバー（会社フィルター） -->
+  <div id="mobile-category-bar">
+    <div id="mobile-cat-scroll">
+      <!-- official.js が動的に生成 -->
+    </div>
+    <button id="mob-date-btn">📅 <span id="mob-date-label">日付</span></button>
+  </div>
+  <div id="mob-date-dropdown">
+    <div id="mob-date-list"></div>
+  </div>
+
+  <!-- ボトムナビ -->
+  <nav id="bottom-nav">
+    <a class="bnav-item" href="index.html">
+      <span class="bnav-icon">🏠</span>
+      <span class="bnav-label">ホーム</span>
+    </a>
+    <a class="bnav-item active" href="official.html">
+      <span class="bnav-icon">📢</span>
+      <span class="bnav-label">公式</span>
+    </a>
+    <a class="bnav-item" href="trending.html">
+      <span class="bnav-icon">🌟</span>
+      <span class="bnav-label">Trending</span>
+    </a>
+  </nav>
+
   <!-- アプリレイアウト: サイドバー + メイン -->
   <div id="app-layout">
 

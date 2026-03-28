@@ -688,6 +688,22 @@ body {
 #empty-state .empty-icon { font-size: 40px; margin-bottom: 16px; }
 
 /* =============================================
+   ボトムナビゲーション（モバイル専用）
+   ============================================= */
+
+#bottom-nav {
+  display: none; /* デスクトップでは非表示 */
+}
+
+/* =============================================
+   モバイルカテゴリタブバー（上部横スクロール）
+   ============================================= */
+
+#mobile-category-bar {
+  display: none; /* デスクトップでは非表示 */
+}
+
+/* =============================================
    レスポンシブ
    ============================================= */
 
@@ -705,122 +721,196 @@ body {
   }
 }
 
-/* モバイル: 2段ヘッダー・サイドバー非表示・1カラム */
+/* モバイル: スマニュー風UI */
 @media (max-width: 768px) {
   :root {
     --sidebar-w: 0px;
-    --header-h: 96px; /* 2段分の高さ */
+    --header-h: 52px;
+    --bottom-nav-h: 56px;
+    --mobile-cat-h: 44px;
   }
 
-  /* ヘッダーを2段構成に */
+  /* ===== ヘッダー: ロゴ + 検索アイコンのみ ===== */
   #header {
-    flex-wrap: wrap;
+    flex-wrap: nowrap;
     padding: 0 12px;
-    height: auto;
-    min-height: var(--header-h);
+    height: var(--header-h);
     gap: 0;
   }
 
-  /* 1段目: ロゴ（左）＋ハンバーガー（右） */
-  #logo {
-    flex: 1;
-    height: 48px;
-    align-items: center;
-  }
+  #logo { flex: 1; }
 
-  /* 検索窓を非表示 */
-  #search-wrapper {
-    display: none;
-  }
+  /* 検索窓を非表示（ボトムナビの検索ボタンで代替） */
+  #search-wrapper { display: none; }
 
-  #sidebar-toggle {
+  /* ヘッダーのタブバーを非表示（ボトムナビに移行） */
+  #tabbar { display: none; }
+
+  /* ハンバーガーも非表示（カテゴリタブで代替） */
+  #sidebar-toggle { display: none; }
+
+  /* ===== モバイルカテゴリタブバー ===== */
+  #mobile-category-bar {
     display: flex;
     align-items: center;
-    justify-content: center;
-    height: 48px;
-    padding: 0 10px;
-    margin: 0;
-    margin-left: auto;
-  }
-
-  /* 2段目: タブバーを全幅で下段に */
-  #tabbar {
-    width: 100%;
-    height: 48px;
-    border-top: 1px solid var(--border);
-    justify-content: space-around;
-    gap: 0;
-    padding: 0 4px;
-  }
-
-  .tab-btn {
-    flex: 1;
-    padding: 0 8px;
-    font-size: 13px;
-    height: 100%;
-    border-bottom: none;
-    border-radius: var(--radius-sm);
-  }
-
-  .tab-btn.active {
-    color: var(--accent-hover);
-    background: var(--accent-subtle);
-    border-bottom: none;
-  }
-
-  /* サイドバー: ドロップダウン型 */
-  #sidebar {
+    position: fixed;
     top: var(--header-h);
     left: 0; right: 0;
-    bottom: auto;
-    width: 100%;
-    height: auto;
-    max-height: 50vh;
-    border-right: none;
+    height: var(--mobile-cat-h);
+    background: var(--bg-surface);
     border-bottom: 1px solid var(--border);
-    display: none;
-    overflow-y: auto;
-    z-index: 150;
+    z-index: 190;
+    overflow: hidden;
   }
 
-  #sidebar.open { display: block; }
+  #mobile-cat-scroll {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    overflow-x: auto;
+    scroll-behavior: smooth;
+    scrollbar-width: none;
+    flex: 1;
+    padding: 0 10px;
+    height: 100%;
+  }
 
-  #sidebar .sidebar-section {
+  #mobile-cat-scroll::-webkit-scrollbar { display: none; }
+
+  .mob-cat-btn {
+    flex-shrink: 0;
+    border: none;
+    border-radius: 20px;
+    padding: 5px 14px;
+    font-size: 13px;
+    font-weight: 600;
+    cursor: pointer;
+    white-space: nowrap;
+    transition: opacity 0.15s;
+    color: #fff;
+    opacity: 0.75;
+  }
+
+  .mob-cat-btn.active { opacity: 1; }
+  .mob-cat-btn:not(.active) { filter: brightness(0.7); }
+
+  /* 日付ボタン（右端固定） */
+  #mob-date-btn {
+    flex-shrink: 0;
+    background: none;
+    border: none;
+    border-left: 1px solid var(--border);
+    color: var(--text-secondary);
+    font-size: 13px;
+    padding: 0 12px;
+    height: 100%;
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    gap: 4px;
+    white-space: nowrap;
+  }
+
+  #mob-date-btn.active {
+    color: var(--accent-hover);
+  }
+
+  /* 日付ドロップダウン */
+  #mob-date-dropdown {
+    position: fixed;
+    top: calc(var(--header-h) + var(--mobile-cat-h));
+    left: 0; right: 0;
+    background: var(--bg-surface);
+    border-bottom: 1px solid var(--border);
+    z-index: 180;
+    display: none;
+    max-height: 40vh;
+    overflow-y: auto;
+  }
+
+  #mob-date-dropdown.open { display: block; }
+
+  #mob-date-list {
     display: flex;
     flex-wrap: wrap;
-    padding: 8px 12px;
-    gap: 4px;
+    gap: 6px;
+    padding: 12px 14px;
   }
 
-  .sidebar-divider { display: none; }
-
-  .sidebar-item {
-    border-left: none;
+  .mob-date-item {
     border: 1px solid var(--border);
     border-radius: 14px;
     padding: 4px 12px;
     font-size: 12px;
-    display: inline-block;
+    color: var(--text-secondary);
+    cursor: pointer;
+    background: none;
   }
 
-  .sidebar-item.active {
+  .mob-date-item.active {
     background: var(--accent-subtle);
     border-color: var(--border-accent);
     color: var(--accent-hover);
   }
 
+  /* ===== アプリレイアウト調整 ===== */
+  #app-layout {
+    margin-top: calc(var(--header-h) + var(--mobile-cat-h));
+  }
+
+  /* サイドバー非表示 */
+  #sidebar { display: none !important; }
+
   /* メイン */
-  #main { margin-left: 0; }
+  #main {
+    margin-left: 0;
+    max-width: 100vw;
+    padding-bottom: calc(var(--bottom-nav-h) + 16px);
+  }
 
   .article-cards-grid { grid-template-columns: 1fr; }
 
   .date-group { padding: 0 12px; }
 
-  .card-thumb {
-    height: 150px;
+  .card-thumb { height: 150px; }
+
+  .card-body { padding: 10px 12px; }
+
+  /* ===== ボトムナビ ===== */
+  #bottom-nav {
+    display: flex;
+    position: fixed;
+    bottom: 0; left: 0; right: 0;
+    height: var(--bottom-nav-h);
+    background: var(--bg-surface);
+    border-top: 1px solid var(--border);
+    z-index: 200;
   }
 
-  .card-body {
-    padding: 10px 12px;
+  .bnav-item {
+    flex: 1;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    gap: 3px;
+    text-decoration: none;
+    color: var(--text-muted);
+    font-size: 10px;
+    font-weight: 500;
+    transition: color 0.15s;
+    cursor: pointer;
+    background: none;
+    border: none;
+    padding: 0;
   }
+
+  .bnav-item.active { color: var(--accent-hover); }
+
+  .bnav-icon {
+    font-size: 20px;
+    line-height: 1;
+  }
+
+  .bnav-label { line-height: 1; }
 }
