@@ -84,21 +84,27 @@ def main():
 
     articles = data["articles"]
 
-    # 対象: 今日の日付・非Trendingの記事（全件再生成）
+    # 対象: 非Trending・全日付（summaryが150文字未満のみ）
     targets = [
         (i, a) for i, a in enumerate(articles)
-        if a.get("date") == TARGET_DATE
-        and not a.get("isTrending")
+        if not a.get("isTrending")
+        and len(a.get("summary", "")) < 150
     ]
 
     if not targets:
-        print(f"✅ {TARGET_DATE} の対象記事なし")
+        print(f"✅ 対象記事なし（全件150文字以上）")
         return
 
     print(f"📝 対象記事: {len(targets)}件（{TARGET_DATE}）\n")
 
     updated = 0
     for idx, (orig_idx, article) in enumerate(targets):
+        # 100件ごとに中間保存
+        if idx > 0 and idx % 100 == 0:
+            data["articles"] = articles
+            with open(ARTICLES_JSON, "w", encoding="utf-8") as f:
+                json.dump(data, f, ensure_ascii=False, separators=(",", ":"))
+            print(f"\n💾 中間保存 ({idx}件完了)\n")
         print(f"  [{idx+1}/{len(targets)}] {article['source']} | {article['title'][:40]}...")
         try:
             response_text = call_gemini(build_prompt(article)).strip()
