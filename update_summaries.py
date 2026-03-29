@@ -46,17 +46,18 @@ def build_prompt(article: dict) -> str:
         github_desc = article.get("githubDescription", "")
         stars = article.get("stars", "")
         language = article.get("language", "")
-        return f"""以下のGitHubリポジトリについて、日本語の詳しい説明を1行で書いてください。
+        return f"""以下のGitHubリポジトリについて、日本語の詳しい説明を書いてください。
 
 ## 内容に含めること
-1. このリポジトリが何をするものか（主目的）
-2. 具体的にどんなことができるか・どう使うか
-3. どんな開発者・場面で役立つか
+1. このリポジトリが何をするものか（主目的・一言で）
+2. 具体的にどんなことができるか・主な機能や特徴
+3. なぜ今注目されているか・どんな開発者・場面で役立つか
 
 ## 文字数ルール（最重要）
-- **100文字以上・200文字以内**で書くこと
-- 改行は一切しない（1行のみ）
+- **200文字以上・350文字以内**で書くこと
+- 読みやすさのために適宜改行してよい（最大3行まで）
 - 説明文・前置き・番号は不要。説明文のみ出力すること
+- 技術用語（AI、LLM、Python、Claude等）はそのままでOK
 
 リポジトリ名: {title}
 言語: {language}
@@ -116,10 +117,10 @@ def main():
         and len(a.get("summary", "")) < 150
     ]
 
-    # trendingの対象: summaryが150文字未満
+    # trendingの対象: summaryが200文字未満（既存の短い要約も再生成）
     targets += [
         ("trending", i, a) for i, a in enumerate(trending)
-        if len(a.get("summary", "")) < 150
+        if len(a.get("summary", "")) < 200
     ]
 
     if not targets:
@@ -144,7 +145,7 @@ def main():
             # 番号付きリスト形式が返ってきた場合の除去
             response_text = re.sub(r"^\d+[\.\)]\s+", "", response_text)
 
-            if response_text and len(response_text) >= 80:
+            if response_text and len(response_text) >= 150:
                 if bucket == "articles":
                     articles[orig_idx]["summary"] = response_text
                 else:
