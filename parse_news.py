@@ -199,6 +199,7 @@ def parse_tech_news(filepath: Path, date_str: str) -> list[dict]:
                 "rankingTier": 3,
                 "rankingScore": 0,
                 "isOfficial": is_official,
+                "addedAt": NOW.isoformat(),
             })
             i = j
             continue

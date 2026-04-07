@@ -3,6 +3,34 @@
    ============================================= */
 
 const PAGE_SIZE = 50;
+const LAST_VISITED_KEY = "ai_nav_last_visited";
+
+// =============================================
+// NEW判定（前回訪問時刻との比較）
+// =============================================
+
+let lastVisitedAt = null;
+
+function initNewBadge() {
+  const stored = localStorage.getItem(LAST_VISITED_KEY);
+  if (stored) {
+    const d = new Date(stored);
+    lastVisitedAt = Number.isNaN(d.getTime()) ? null : d;
+  }
+  // localStorage更新はデータ読み込み成功後に行う（loadDataSuccess()で呼ぶ）
+}
+
+function markVisited() {
+  localStorage.setItem(LAST_VISITED_KEY, new Date().toISOString());
+}
+
+function isNewArticle(article) {
+  if (!lastVisitedAt) return false;
+  if (!article.addedAt) return false;
+  const addedAt = new Date(article.addedAt);
+  if (Number.isNaN(addedAt.getTime())) return false;
+  return addedAt > lastVisitedAt;
+}
 
 // =============================================
 // 状態管理
@@ -26,6 +54,7 @@ let searchTimer = null;
 // =============================================
 
 async function loadData() {
+  initNewBadge();
   const res = await fetch("articles.json");
   const data = await res.json();
 
@@ -33,6 +62,7 @@ async function loadData() {
   allDates = data.dates || [];
   allCategories = data.categories || [];
 
+  markVisited(); // データ読み込み成功後に訪問時刻を記録
   buildSidebarFilters();
   buildMobileCategoryBar();
   buildMobileDateDropdown();
@@ -288,6 +318,9 @@ function sortArticles(articles) {
     });
   }
   return [...articles].sort((a, b) => {
+    const aNew = isNewArticle(a);
+    const bNew = isNewArticle(b);
+    if (aNew !== bNew) return aNew ? -1 : 1;
     if (a.date !== b.date) return b.date.localeCompare(a.date);
     if (a.isPick && !b.isPick) return -1;
     if (!a.isPick && b.isPick) return 1;
@@ -364,7 +397,11 @@ function createCard(article, isRanking = false) {
   if (article.isPick) {
     card.classList.add(article.pickPriority === "must-read" ? "pick-must" : "pick-check");
   }
+  if (isNewArticle(article)) {
+    card.classList.add("is-new");
+  }
 
+  const newBadge = isNewArticle(article) ? `<span class="new-badge">NEW</span>` : "";
   const pickBadge = article.isPick
     ? `<span class="pick-badge">${article.pickPriority === "must-read" ? "🔴" : "🟡"}</span>`
     : "";
@@ -400,7 +437,7 @@ function createCard(article, isRanking = false) {
     ${thumbHtml}
     <div class="card-body">
       <div class="card-header">
-        ${pickBadge}
+        ${newBadge}${pickBadge}
         <div class="card-title">${escHtml(article.title)}</div>
         ${rankScore}
       </div>
